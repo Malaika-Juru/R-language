@@ -1,0 +1,159 @@
+---
+title: "Combining Heights"
+author: "Malaika Juru"
+editor: visual
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+# toc: true
+# number-sections: true
+# highlight-style: pygments
+execute:
+  keep-md: true
+  warning: false
+format:
+  # md: default
+  html:
+    code-fold: true
+---
+
+```{r, warning=FALSE, message=FALSE}
+# Load required libraries
+library(tidyverse)
+library(haven)
+library(foreign)
+library(ggplot2)
+library(downloader)
+```
+
+```{r,eval=FALSE}
+# Set the working directory to the folder containing the data files
+setwd("C:/Users/Malaika Juru/OneDrive - Research and Business Development Center, Inc/Desktop/DS 350 FA23'/DS350_FA23_Juru_Mala")
+```
+
+```{r, warning=FALSE, message=FALSE}
+# Import the datasets:
+## German male conscripts in Bavaria, 19th century (Stata format)
+german_conscripts <-rio::import("https://byuistats.github.io/M335/data/heights/germanconscr.dta")
+#german_conscripts <- read_dta("https://byuistats.github.io/M335/data/heights/germanconscr.dta") 
+```
+
+```{r}
+g_df <- german_conscripts%>%
+  mutate(
+    birth_year = bdec,
+    height.cm = height,
+    height.in = height / 2.54,
+    study = "German male conscripts in Bavaria"
+  ) %>%
+  select(birth_year, height.in, height.cm, study)
+```
+
+
+
+```{r}
+## Heights of Bavarian male conscripts, 19th century (Stata format)
+bavarian_heights <- read_dta("https://byuistats.github.io/M335/data/heights/germanprison.dta") %>%
+  mutate(
+    birth_year = bdec,
+    height.cm = height,
+    height.in = height / 2.54,
+    study = "Heights of Bavarian male conscripts"
+  ) %>%
+  select(birth_year, height.in, height.cm, study)
+```
+
+```{r}
+## Heights of south-east and south-west German soldiers born in the 18th century (DBF format)
+# Download and unzip the data first
+download("https://byuistats.github.io/M335/data/heights/Heights_south-east.zip", "heights_southeast.zip")
+unzip("https://byuistats.github.io/M335/data/heights/Heights_south-east.zip", "heights_southeast.zip")
+german_soldiers <- read.dbf("B6090.DBF") %>%
+  mutate(
+    birth_year = GEBJ,
+    height.cm = (F * 30.48 + Z * 2.54 + V / 4 * 2.54 + S / 12 * 2.54),
+    height.in = (F * 12 + Z + V / 4 + S / 12),
+    study = "Heights of south-east and south-west German soldiers"
+  ) %>%
+  select(birth_year, height.in, height.cm, study)
+
+## Bureau of Labor Statistics Height Data (CSV format)
+labor_stats <- read.csv("https://raw.githubusercontent.com/hadley/r4ds/main/data/heights.csv") %>%
+  filter(sex == "male") %>%
+  mutate(
+    birth_year = 1950, # Assumed birth year for all
+    height.cm = height * 2.54,
+    height.in = height,
+    study = "Bureau of Labor Statistics Height Data"
+  ) %>%
+  select(birth_year, height.in, height.cm, study)
+```
+
+```{r}
+## University of Wisconsin National Survey Data (SPSS format)
+wisconsin_data <- read_sav("http://www.ssc.wisc.edu/nsfh/wave3/NSFH3%20Apr%202005%20release/main05022005.sav") %>%
+  mutate(
+    birth_year = as.numeric(DOBY),
+    height.in = (RT216F * 12 + RT216I),
+    height.cm = (RT216F * 30.48 + RT216I * 2.54),
+    study = "University of Wisconsin National Survey Data"
+  ) %>%
+  select(birth_year, height.in, height.cm, study)
+```
+
+```{r}
+######################################
+# Combine the datasets
+combined_height_data <- bind_rows(german_conscripts, bavarian_heights, german_soldiers, labor_stats, wisconsin_data)
+
+# Make a plot of the five studies containing individual heights to examine the question of height distribution across centuries.
+##  Data Wrangling: Calculate century and filter outliers
+final_height_data <- combined_height_data %>%
+  mutate(
+    century = case_when(
+      birth_year < 1800 ~ "18th",
+      between(birth_year, 1800, 1899) ~ "19th",
+      between(birth_year, 1900, 1999) ~ "20th",
+      birth_year >= 2000 ~ "21st"
+    )
+  ) %>%
+  filter(height.in > 0 & height.in < 250) %>% # Filter out outliers
+  select(c(birth_year, height.in, height.cm,study, century))
+```
+
+Importing multiple datasets in various formats and standardizing their column names were all part of the data wrangling process. For one dataset lacking birth year information, I assumed a constant birth year of 1950, as specified in the assignment. Height was also translated from inches to centimeters using a conversion ratio of 2.54 in cm, which equals 1 inch. Records with heights more than 250 inches, an implausible figure for human height, were eliminated to maintain data accuracy. This reduced the datasets for analysis, preserving consistency while eliminating any outliers.
+
+```{r, warning=FALSE, message=FALSE}
+# ggplot(final_height_data, aes(x = century, y = height.cm, color = study)) +
+#   geom_line() +
+#   scale_x_continuous() +
+#   theme_bw() +
+#   labs(
+#       title = "Height Distribution Across Birth Years",
+#       x = "Century",
+#       y = "Height (cm)",
+#       color = "Study") +
+#       scale_color_discrete( 
+#         labels = c("German Conscripts", "Bavarian Conscripts", "German Soldiers", "Bureau of Labor Statistics", "University of Wisconsin National Survey"))
+  
+final_height_data <- drop_na(final_height_data)
+  
+ggplot(final_height_data, aes(x = century, y = height.cm, color = study)) +
+  geom_boxplot() +  # Use geom_point for a scatterplot
+   labs(
+     title = "Height Distribution Across Birth Years",
+     x = "Century",
+     y = "Height (cm)"
+   ) +
+   scale_color_discrete(name = "Study") +
+   theme_minimal()
+  
+
+
+```
+
+According to the data analysis, making precise conclusions on changes in human height throughout time is difficult. The records, which cover different historical periods and places, do not show a clear and consistent pattern in human height history.
+
+The statistics do not give significant evidence to support the thesis that people are growing taller over time. While some of the datasets show height gains, others show oscillations or reductions. The variety of data sources and the assumption of a constant birth year in one dataset make making general judgments regarding height trends problematic.
+
+Finally, the datasets examined do not provide a coherent story regarding variations in human height across time. A more complete and uniform dataset that accounts for many factors influencing height would be required to make more conclusive statements regarding human height trends. According to the available data, height trends are complicated and sensitive to various factors, making it difficult to establish a constant rising trajectory in human height across millennia.
+
+

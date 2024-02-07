@@ -1,0 +1,72 @@
+---
+title: "Gapminder, Part 2"
+execute:
+  keep-md: true
+  warning: false
+format:
+  html:
+    code-fold: true
+    code-line-numbers: true
+---
+
+```{r}
+#Load libraries
+library(gapminder)
+library(tidyverse)
+library(dplyr)
+
+options(dplyr.summarise.inform = FALSE)
+
+```
+
+
+```{r}
+#Removing Kuwait
+New_gapminder2 <- gapminder %>% 
+  filter(country != "Kuwait")
+```
+
+```{r}
+#Weighted average data
+weighted_average_data <-  New_gapminder2 %>% 
+  group_by(continent, year) %>% 
+  summarise(weighted_avg_gdp = weighted.mean(gdpPercap, w = pop)) %>% 
+  inner_join(gapminder, by=c('year' = 'year', 'continent' = 'continent'))
+
+```
+
+
+```{r}
+ggplot() +
+  geom_point(data= weighted_average_data, aes(x=year, y=weighted_avg_gdp, size=pop/1000), color = "black" ) +
+  geom_line(data= weighted_average_data, aes(x=year, y=weighted_avg_gdp), color = "black", size = 1.5 ) +
+  geom_point(data= New_gapminder2, aes(x=year, y=gdpPercap, color = continent), alpha = 0.6) +
+  geom_line(data= New_gapminder2, aes(x=year, y=gdpPercap, color = continent, group=country), alpha = 0.3) +
+  facet_wrap(vars(continent), nrow = 1) +
+  coord_cartesian(xlim=c(1950,2005)) +
+  labs(x="Year", y="GDP per Capita", size = "Population (100k)") +
+  theme_bw() +
+   scale_size_continuous(
+    breaks = c(10000, 20000, 30000),
+    labels = c("10,000", "20,000", "30,000"),
+    name = "Population (100k)") 
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

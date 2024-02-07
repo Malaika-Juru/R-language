@@ -1,0 +1,161 @@
+---
+title: "Wings To Fly"
+editor: visual
+execute:
+  echo: false
+  keep-md: true
+  warning: false
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+format:
+  html:
+    code-fold: true
+    fig-width: 12
+    fig-height: 6
+    code-line-numbers: true
+---
+
+```{r, message=FALSE}
+#Load data
+library(nycflights13)
+library(tidyverse)
+library(pander)
+library(mosaic)
+```
+
+```{=html}
+<!--
+# Choose 2 Questions out of 3 to answer:
+## Each answer should contain at least one chart and a description where you state the answer.
+
+#1: For each origin airport (JFK, EWR, LGA), which airline has the lowest 75th percentile of departure delay for flights scheduled to leave earlier than noon?
+
+#2: Which origin airport is best to minimize my chances of a late arrival when I am using Delta Airlines?
+
+#3: Which destination airport is the worst airport for arrival delays? You decide on the metric for “worst.” -->
+```
+## Question 1:
+
+### For each origin airport (JFK, EWR, LGA), which airline has the lowest 75th percentile of departure delay for flights scheduled to leave earlier than noon?
+
+```{r}
+## Question1
+# First remove negative numbers and flights that leave earlier than noon
+
+flights_positive_noon <- flights %>% 
+  filter(dep_delay > 0 & dep_time < 1200)
+
+View(flights_positive_noon)
+
+flights_positive_noon %>% 
+  group_by(origin) %>% 
+  summarise(Q3 = quantile(dep_delay, 0.75)) %>% 
+pander()
+
+
+# Boxplot
+ggplot(flights_positive_noon, aes(x= origin, y = dep_delay)) +
+  geom_boxplot(fill="skyblue", color="black") +
+  coord_cartesian(ylim=c(0,50))
+
+
+
+
+```
+
+We are assessing which airline, between Newark Airport, John F. Kennedy International Airport, and LaGuardia Airport, has the lowest 75th percentile of departure delays that leave at times that are earlier than noon. Once filtering the data and creating a numerical summary and visualization, we can understand that both the Newark and LaGuardia Airports would be more reliable in terms of lowering your chances of having your flight delayed with only 28 minutes of delay.
+
+<hr>
+
+## Question 2
+
+### Which origin airport is best to minimize my chances of a late arrival when I am using Delta Airlines?
+
+```{r}
+# Filter carrier == DL, arr_delay > 0
+flights_DL <- flights %>% 
+  filter(carrier == "DL")
+
+View(flights_DL)
+
+```
+
+```{r}
+# Find the airport with the lowest arrival delays 
+## Create column cart
+flights_DL_late <- flights_DL %>% 
+  filter(!is.na(arr_delay)) %>% 
+  mutate(
+    late = case_when(
+      arr_delay > 0 ~ 1,
+      arr_delay <= 0 ~ 0
+    )
+  ) %>% 
+  group_by(origin) %>% 
+  summarise(late_pct = mean(late))
+
+ggplot(data=flights_DL_late, aes(x=origin, y=late_pct * 100)) +
+  geom_col(fill = "firebrick", show.legend = FALSE, color="black", width  = 0.7) + # Adjust the width of bars
+  labs(
+    title = "Late Flights Percentage by Origin", 
+    x = "Origin", y = "Late Percentage"
+  ) +
+  scale_y_continuous(labels = scales::percent_format(scale = 1)) +
+  theme_minimal() +
+  geom_text(aes(label =  sprintf("%.2f%%", late_pct * 100)),
+            position = position_stack(vjust = 0.5),
+            color="white",
+            size=3) # Add percentage labels to the bars
+pander(flights_DL_late)
+
+```
+
+Delta Airlines shows their reliability to their customers by attaining a percentage below 50% from all airports of late arrivals. To answer the question of which airport is considered the most reliable and hence predicable, therefore minimizing chances of late arrivals we can see that John F. Kennedy International Airport (JFK) takes superiority amongst the other airports with a percentage of rounded 31% of times being late.
+
+<hr>
+
+## At least one of your visualizations needs to show the complexity of the data (i.e. individual flights, and not only broad summaries):
+
+### Violin Plot
+
+```{r, warning=FALSE}
+# Scatter plot showing individual flights
+flights_late <- flights %>% 
+  filter(!is.na(arr_delay)) %>% 
+  mutate(late = case_when(
+      arr_delay > 0 ~ 1,
+      arr_delay <= 0 ~ 0
+  )
+  )
+
+
+flights_scatter <- ggplot(data = flights_late, aes(x = origin, y = arr_delay)) +
+  geom_point(color = "blue", alpha = 0.5) +
+  scale_y_continuous(0, 50) +
+  labs(x = "Origin", y = "Arrival Delay (minutes)", title = "Arrival Delay by Origin Airport") +
+  theme_minimal()
+
+ggsave("scatter_plot.png", plot = flights_scatter, width = 8, height = 4)
+
+flights_scatter + theme(
+  plot.margin = margin(1, 1, 1, 3, "cm") 
+)
+
+# # Requirement: At least one of your visualizations needs to show the complexity of the data (i.e. individual flights, and not only broad summaries).
+# 
+# # Showing a Violin plot of the distribution of the different origins
+# 
+# flights_violin <- ggplot(data=flights, aes(x=origin, y= arr_delay)) +
+#   geom_violin(fill = "orangered", color="black", alpha = 0.7) +
+#   scale_y_continuous(0,50) +
+#   labs(x = "Origin", y = "Arrival Delay (minutes)" , title = "Arrival Delay by Origin Airport") +
+#   theme_minimal()
+# 
+# ggsave("violin_plot.png", plot = flights_violin, width = 8, height = 4)
+# 
+# flights_violin + theme(
+#   plot.margin = margin(1, 1, 1, 3, "cm") 
+# )
+
+```
+
+To show the complexity of the data, the scatter plot graph I made aims to illustrate how different planes' arrival delays varied according to the airports of origin. By showing each aircraft as a dot on the plot, it gives us a deeper understanding of this connection and enables us to observe the variations and trends in arrival delays for specific flights.

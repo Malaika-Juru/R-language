@@ -1,0 +1,136 @@
+---
+title: "Reducing Gun Deaths"
+execute:
+  keep-md: true
+  warning: false
+format:
+  html:
+    code-fold: true
+    code-line-numbers: true
+
+---
+
+```{r, message=FALSE, warning=FALSE}
+library(downloader)
+library(readxl)
+library(tidyverse)
+library(pander)
+library(ggplot2)
+library(mosaic)
+
+# Read in the data 
+gundata <- read_csv("https://raw.githubusercontent.com/fivethirtyeight/guns-data/master/full_data.csv")
+
+# View(gundata)
+```
+
+### <a href="javascript:showhide('uniquename')">Gun Deaths in America <span style="font-size:8pt;"></span></a>
+
+
+This article provides information on several elements of firearm-related fatalities in the US, such as middle-aged male suicides, young black male homicides, and accidental deaths. With the exception of police shootings of civilians, which are from 2014 owing to faulty CDC figures, the data utilized for research spans the years 2012 to 2014. Mother Jones' database is the source of mass shooting data.
+
+```{r}
+# Create one plot to illustrate one (or more) of the key insights from your summary
+
+# Barchart, Line chart, Pie chart
+
+## Barchart
+
+clean_gundata <- na.omit(gundata)
+
+ggplot(clean_gundata, aes(x = race, y = age, fill = intent)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8)) +
+  labs(title = "Firearm-Related Deaths by Race",
+       x = "Race",
+       y = "Count") +
+  theme_minimal()
+
+
+clean_gundata %>% 
+  group_by(race) %>% 
+  summarise(Mean = mean(age)) %>% 
+  pander()
+
+# Numerical summary of the paragraph: Black Young Men
+gundata_summary %>% 
+  group_by(education) %>% 
+  summarise(Min = min(age), Q1 = quantile(age, 0.25), Median = median(age),
+            Q3 = quantile(age, 0.75), Max = max(age), Mean = mean(age), Std_Dev = sd(age), Count = n() ) %>% 
+  pander()
+
+```
+
+In the graph above it shows fire-arm related by the race. Each race is then sub-categorized into the reason of their deaths. 
+
+In the numerical summary above, it is showing the statitics of Young Black Men that are involved in fire-arm related deaths. At my discretion I have classified young as below the age of 30. 
+
+```{r}
+# Provide plots that help the client know the different potential groups (variables) they could address in different seasons (2-4 visualizations seem necessary)
+
+# Groups/Variables <- race, sex, age, month - line chart
+
+race_data <- clean_gundata %>% 
+  group_by(race) %>% 
+  summarise(Count = n())
+  
+
+ggplot(data=race_data, aes(x = Count, y = reorder(race, Count))) +
+  geom_col(fill="blue", stats = "identity", position = position_dodge(width = 0.8), color = "black") +
+  labs(title = "Firearm-Related Deaths by Race",
+       x = "Race",
+       y = "Count") +
+    theme_bw()
+
+
+table(clean_gundata$race) %>% 
+  pander()
+```
+In the graph shown above it shows that the highest fire-arm related deaths, of both male and female, are dominated by the White race, with 64,598 deaths. The least fire-arm related deaths are within the Native American/Native Alaskan race.
+
+
+
+```{r}
+# Groups/Variables <- race, sex, age, month - line chart
+
+sex_data <- clean_gundata %>% 
+  group_by(sex) %>% 
+  summarise(Count = n())
+  
+
+ggplot(data=sex_data, aes(x = Count, y = reorder(sex, Count))) +
+  geom_col(fill = "cadetblue1", stats = "identity", position = position_dodge(width = 0.8), color = "darkgoldenrod") +
+  labs(title = "Firearm-Related Deaths by Sex",
+       x = "Sex",
+       y = "Count") +
+  theme_bw()
+
+
+pander(table(clean_gundata$sex))
+```
+As shown by the summary graph shown above and the numerical summaries, it graph reconfirms that Males are the dominate gender who pass away from fire-arm related incidents, with 83,835 reported deaths.
+
+```{r}
+# Groups/Variables <- race, sex, month - line chart
+
+# Cretaing new dataset with the month as a variable
+month_gundata <- clean_gundata %>% 
+  group_by(month) %>% 
+  summarise(Count = n()) %>% 
+  
+# Assuming month_data$month contains numerical month values
+mutate(monthabb = month.abb[as.numeric(month)])%>%
+  mutate(monthabb = factor(monthabb, month.abb))
+
+
+ggplot(data = month_gundata, aes(x = monthabb, y = Count, group = 1)) +
+  geom_line(color = "firebrick", fill="black") +
+  labs(title = "Firearm-Related Deaths by Month",
+       x = "Month",
+       y = "Count") +
+  theme_minimal()
+
+
+pander(table(clean_gundata$month))
+```
+In the graph above it shows firearm related deaths in the different Months. We can see that the highest number of incidents that resulted to deaths occured in July. The table confirms this showing 8,737 deaths in July. The lowest number of deaths occured in February, with 6,900 deaths. 
+

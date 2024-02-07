@@ -1,0 +1,82 @@
+---
+title: "BYU Baseball"
+execute:
+  keep-md: true
+  warning: false
+format:
+  html:
+    code-fold: true
+    code-line-numbers: true
+---
+## Utah Baseball Players
+
+```{r, warning=FALSE, message=FALSE}
+# install.packages("Lahman")
+# install.packages("priceR")
+
+#load libraries
+library(Lahman)
+library(priceR)
+library(tidyverse)
+library(dplyr)
+
+# Adjust salaries for inflation
+#adjust_for_inflation(price = Salaries$salary, from_date = Salaries$yearID, country = "US", to_date = 2021)
+
+# Wrangling the data to join tables
+College_years <- CollegePlaying %>% 
+  inner_join(Schools, by = "schoolID") %>% 
+  filter(state == "UT") %>% 
+  arrange(playerID, -yearID) %>% 
+  group_by(playerID) %>%
+  slice_head(n=1) %>% 
+  inner_join(Salaries, by = "playerID") %>% 
+  inner_join(People, by = "playerID") %>% 
+  unite("PlayerName", c(nameFirst,nameLast), sep = " ") %>% 
+  select(c(PlayerName, playerID, schoolID, name_full, yearID.y, salary)) %>% 
+  mutate(Adj_salary = adjust_for_inflation(price = salary, from_date = yearID.y, country = "US", to_date = 2022))
+
+
+# School
+ggplot(data = College_years, aes(y = reorder(name_full, Adj_salary), x = Adj_salary, fill = name_full)) +
+  #Add colors
+  geom_col(stat = "identity", position = "dodge") +
+  labs(
+    title = "Comparison of Earnings for Professional Baseball Players by School",
+    x = "School",
+    y = "Earnings"
+  ) +
+  scale_x_continuous(labels = scales::comma) +
+  theme_minimal()+
+  theme(legend.position = "none")
+```
+In the Graph showing the comparison of what baseball players earn at different schools. It shows that if baseball players want to earn the most, they should aim to play for Brigham Young University. Dixie State College of Utah is also another good university to play for with high earnings. Southern Utah University's players earn the least, but the rest of the universities fall in the same ball park with with lower earnings. 
+
+```{r, warning=FALSE, message=FALSE}
+# Numerical summary
+library(mosaic)
+library(pander)
+College_years %>% 
+  group_by(name_full) %>% 
+  summarise(Mean = mean(Adj_salary)) %>% 
+  arrange(-Mean) %>% 
+  pander()
+
+```
+
+In this numerical summary we are showing the order at which university has baseball players who earn more and as you go down the table, the less they earn. 
+
+```{r, warning=FALSE, message=FALSE}
+# Plot of players by salary
+ggplot(data = College_years, aes(y = reorder(PlayerName, Adj_salary), x = Adj_salary, fill = schoolID, group_by(schoolID))) +
+  geom_col(stat = "identity", position = "dodge") +
+  labs(
+    title = "Comparison of Earnings of Professional Baseball Players",
+    x = "Salary",
+    y = "Players"
+  ) +
+  scale_x_continuous(labels = scales::comma) +
+  theme_minimal()
+```
+
+Each baseball player hones their own level of skills and the higher one's skill, the more likely they are to be paid a higher salary than others. The top paid baseball players as the graph shows, are from Brigham Young University. This supports the first graph showing that BYU has the highest earnings for players. We can also dipict that it has some players with low earners, but we can account for that by the different experiences of the players. The more experience you have the more you earn and vice versa. <br>
